@@ -60,6 +60,7 @@ Mostra la data de cada transacció juntament amb el total de les vendes.*/
 SELECT DATE(timestamp) AS Fecha,
 			SUM(amount) AS Ventas_total
 FROM transaction
+WHERE declined = '0'
 GROUP BY Fecha
 ORDER BY Ventas_total DESC
 LIMIT 5;
@@ -69,6 +70,7 @@ Quina és la mitjana de vendes per país? Presenta els resultats ordenats de maj
 SELECT company_name, round(AVG(amount), 2) AS Ventas_promedio
 FROM transaction
 JOIN company ON transaction.company_id = company.id
+WHERE declined = '0'
 		GROUP BY company_name
 		ORDER BY Ventas_promedio DESC;
         
@@ -114,11 +116,14 @@ JOIN company ON transaction.company_id = company.id
 Necessitem optimitzar l'assignació dels recursos i dependrà de la capacitat operativa que es requereixi, per la qual cosa et demanen 
 la informació sobre la quantitat de transaccions que realitzen les empreses, però el departament de recursos humans és exigent 
 i vol un llistat de les empreses on especifiquis si tenen més de 4 transaccions o menys.*/
-SELECT company_name, COUNT(amount) AS Numero_transacciones
-FROM transaction
+SELECT company_name, COUNT(amount) AS numero_transacciones,
+CASE 
+	WHEN COUNT(amount) >= 4 THEN 'Más de 4 transacciones'
+    ELSE 'Menos de 4 transacciones'
+END AS Clasificacion_Transacciones
+FROM transaction 
 JOIN company ON transaction.company_id = company.id
 GROUP BY company_name
-HAVING COUNT(transaction.amount) <> 4
-ORDER BY Numero_transacciones DESC;
+ORDER BY Clasificacion_transacciones;
 
 
