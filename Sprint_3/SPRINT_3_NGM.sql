@@ -175,14 +175,17 @@ SELECT * FROM data_user WHERE id = '9999';
 
 -- Creamos la tabla
 
-CREATE VIEW InformeTecnico AS
+CREATE OR REPLACE VIEW InformeTecnico AS
 SELECT transaction.id AS ID_Transaccion,
 		CONCAT(data_user.name, " " , data_user.surname) AS 'Nombre Completo',
         data_user.personal_email AS email_contacto,
 		credit_card.iban AS 'Numero Tarjeta',
 		transaction.amount AS 'Importe transaccion',
 		transaction.timestamp AS Fecha,
-		transaction.declined AS Estado,
+		CASE 
+			WHEN transaction.declined = 0 THEN 'Aprobada'
+			WHEN transaction.declined = 1 THEN 'Declinada'
+		END AS Estado,
 		company.company_name AS 'Nombre Empresa',
 		company.country AS 'Pais Empresa'
 FROM transaction
