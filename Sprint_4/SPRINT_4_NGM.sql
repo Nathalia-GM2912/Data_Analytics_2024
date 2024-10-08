@@ -165,11 +165,39 @@ JOIN credit_cards cc ON cc.id = t.card_id						-- alias credit_cards = cc
  i genera la següent consulta:	*/
  
 -- Creamos la tabla Estado_Tarjeta
- CREATE TABLE IF NOT EXISTS Card_Status (
+CREATE TABLE IF NOT EXISTS Card_Status (
 	card_id VARCHAR(20) PRIMARY KEY,
     Status VARCHAR(30)
 );
 
 -- Se introducen los datos con filtros según la petición
 
-INSERT INTO Card_Status (card_id, status)
+INSERT INTO card_status (card_id, status)
+WITH transacciones_tarjeta AS (
+    SELECT card_id, 
+           declined, 
+           ROW_NUMBER() OVER (PARTITION BY card_id ORDER BY timestamp DESC) AS row_transaction
+    FROM transactions
+)
+SELECT card_id,
+       CASE 
+           WHEN SUM(declined) <= 2 THEN 'tarjeta activa'
+           ELSE 'tarjeta inactiva'
+       END AS estado_tarjeta
+FROM transacciones_tarjeta
+WHERE row_transaction <= 3
+GROUP BY card_id;
+
+-- Chequeamos como ha qeudado la tabla con los registros ingresados con el filtro efectuado con la tabla temporal.
+SELECT * FROM card_status;
+
+/* Ejercicio 2 ***********************
+Quantes targetes estan actives?*/
+
+SELECT COUNT(*) AS 'tarjetas activas'
+FROM card_status
+WHERE status ='tarjeta activa';
+
+
+
+
