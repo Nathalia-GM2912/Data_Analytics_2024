@@ -72,35 +72,60 @@ CREATE TABLE IF NOT EXISTS users (
 	address VARCHAR(255)
 );
 
+-- No he cargado los archivos csv en las tablas por comando, sino que los he cargado con “Table Data Import Wizard” ==> mostrado en .pdf
+-- Lo intenté al principio de todas las maneras y decidi avanzar con “Table Data Import Wizard” .
 -- SET GLOBAL local_infile = 1;
-
 -- SHOW GLOBAL VARIABLES LIKE 'local_infile';
+-- SHOW VARIABLES LIKE 'secure_file_priv';
 
--- No he cargado los archivos csv en las tablas por comando
-/*LOAD DATA LOCAL INFILE      
-'C:\ProgramData\MySQL\MySQL Server 8.0\Uploads\companies.csv'
-INTO TABLE companies
+-- Los errores que me salían:
+/*Error Code: 3948. Loading local data is disabled; this must be enabled on both the client and server sides
+Error Code: 2068. LOAD DATA LOCAL INFILE file request rejected due to restrictions on access. 
+Error Code: 1064. You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'this must be enabled on both the client and server sides Error Code: 2068. LOAD ' at line 1
+Error Code: 1046. No database selected Select the default DB to be used by double-clicking its name in the SCHEMAS list in the sidebar.*/
+
+-- Vuelvo a intentar cargar los datos por comando, después de haberlos cargado con el Wizard y para el Nivel 3.
+-- Cuando he logrado la forma de conexión y permisos he recreado añadir los datos en una nueva tabla "company" y "credit_card"
+-- Para los demás no, porque me genera problemas de integridad con PKs y FKs.
+
+CREATE TABLE IF NOT EXISTS company (
+	id VARCHAR(15) PRIMARY KEY,
+    company_name VARCHAR(255),
+    phone VARCHAR(15),
+    email VARCHAR(100),
+    country VARCHAR(100),
+    website VARCHAR(255)
+);
+
+LOAD DATA LOCAL INFILE      
+'C:/ProgramData/MySQL/MySQL Server 8.0/Uploads/companies.csv'
+INTO TABLE company
 FIELDS TERMINATED BY ','
 ENCLOSED BY '"'
 LINES TERMINATED BY '\r\n'
 IGNORE 1 ROWS;
 
+CREATE TABLE IF NOT EXISTS credit_card ( 
+	id VARCHAR(20) PRIMARY KEY,
+	user_id VARCHAR(20),
+	iban VARCHAR(255),
+	pan VARCHAR(45),
+	pin CHAR(4),
+	cvv CHAR(3),
+	track1 VARCHAR(255),
+	track2 VARCHAR(255),
+	expiring_date varchar(255)
+);
+
 LOAD DATA LOCAL INFILE      
-'C:\Users\Nathalia\OneDrive\Escritorio\BootCamp\Proporcionados\Sprint_4_csv\credit_cards.csv'
-INTO TABLE companies
+'C:/ProgramData/MySQL/MySQL Server 8.0/Uploads/credit_cards.csv'
+INTO TABLE credit_card
 FIELDS TERMINATED BY ','
 ENCLOSED BY '"'
-LINES TERMINATED BY '\r\n'
-IGNORE 1 ROWS;*/
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;
 
-/*Error Code: 3948. Loading local data is disabled; this must be enabled on both the client and server sides
-Error Code: 2068. LOAD DATA LOCAL INFILE file request rejected due to restrictions on access.-- 
-Error Code: 1064. You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'this must be enabled on both the client and server sides Error Code: 2068. LOAD ' at line 1
-Error Code: 1046. No database selected Select the default DB to be used by double-clicking its name in the SCHEMAS list in the sidebar.*/
-
--- Cargar datos con “Table Data Import Wizard” ==> mostrado en .pdf
-
--- Se crean los indices para mejorar el rendimiento
+-- Con todas las tablas creadas, se crean los indices para mejorar el rendimiento:
 
 alter table transactions change bussiness_id business_id varchar(20);
 
@@ -125,7 +150,7 @@ ALTER TABLE transactions
 	ADD CONSTRAINT fk_user
 	FOREIGN KEY (user_id) REFERENCES users(id);
 
--- Relación entre transactions y products
+-- Relación entre transactions y products ==> Este lo dejo para depués.
 /*ALTER TABLE transactions
 	ADD CONSTRAINT fk_product
 	FOREIGN KEY (products_ids) REFERENCES products(id);*/
@@ -171,7 +196,6 @@ CREATE TABLE IF NOT EXISTS Card_Status (
 );
 
 -- Se introducen los datos con filtros según la petición
-
 INSERT INTO card_status (card_id, status)
 WITH transacciones_tarjeta AS (
     SELECT card_id, 
@@ -188,7 +212,7 @@ FROM transacciones_tarjeta
 WHERE row_transaction <= 3
 GROUP BY card_id;
 
--- Chequeamos como ha qeudado la tabla con los registros ingresados con el filtro efectuado con la tabla temporal.
+-- Chequeamos como ha quedado la tabla con los registros ingresados con el filtro efectuado con la tabla temporal.
 SELECT * FROM card_status;
 
 /* Ejercicio 2 ***********************
@@ -198,6 +222,74 @@ SELECT COUNT(*) AS 'tarjetas activas'
 FROM card_status
 WHERE status ='tarjeta activa';
 
+-- ************** Nivel 3  **************
+
+/*Crea una taula amb la qual puguem unir les dades del nou arxiu products.csv amb la base de dades creada, 
+tenint en compte que des de transaction tens product_ids. Genera la següent consulta:*/
+
+-- Para poder eliminar datos dentro de tablas, desactivar temporalmente para la sesión actual con el siguiente comando SQL:
+SET SQL_SAFE_UPDATES = 0;
+DELETE FROM products;
+SET SQL_SAFE_UPDATES = 1;
+
+-- He borrado los datos y los he vuelto a ingresar para eliminar el sigo $ de la columna price*/
+
+-- Añado los datos de productos
+
+LOAD DATA LOCAL INFILE      
+'C:/ProgramData/MySQL/MySQL Server 8.0/Uploads/products.csv'
+INTO TABLE products
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS
+(id, product_name, @price, colour, weight, warehouse_id)
+SET price = REPLACE(@price,'$','');  -- Se configura la columna 'price' para extraer el signo '$'
+
+-- Al analizar mejor los datos he decidido cambiar también el dato de fecha de la tabla credit_cards.
+
+SET SQL_SAFE_UPDATES = 0;
+
+UPDATE credit_cards
+SET expiring_date = STR_TO_DATE(@expiring_date, '%d,%m,%y');
+
+SET SQL_SAFE_UPDATES = 1;
+
+UPDATE credit_cards
+SET expiring_date = STR_TO_DATE(expiring_date, '%m/%d/%Y');
+
+Error Code: 1175. You are using safe update mode and you tried to update a table without a WHERE that uses a KEY column.  To disable safe mode, toggle the option in Preferences -> SQL Editor and reconnect.
+Error Code: 1411. Incorrect datetime value: '10/30/22' for function str_to_date
+275 row(s) affected Rows matched: 275  Changed: 275  Warnings: 0
 
 
+CREATE TEMPORARY TABLE temp_expiring_dates (
+    id VARCHAR(20) PRIMARY KEY,
+	user_id VARCHAR(20),
+	iban VARCHAR(255),
+	pan VARCHAR(45),
+	pin CHAR(4),
+	cvv CHAR(3),
+	track1 VARCHAR(255),
+	track2 VARCHAR(255),
+	expiring_date varchar(255)
+);
+LOAD DATA LOCAL INFILE 'C:/ProgramData/MySQL/MySQL Server 8.0/Uploads/credit_cards.csv'
+INTO TABLE temp_expiring_dates
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;
+
+drop table temp_expiring_dates;
+
+UPDATE credit_cards c
+JOIN temp_expiring_dates t ON c.id = t.id
+SET c.expiring_date = STR_TO_DATE(t.expiring_date, '%d/%m/%Y');
+
+UPDATE credit_cards c
+JOIN temp_expiring_dates t ON c.id = t.id
+SET c.expiring_date = STR_TO_DATE(t.expiring_date, '%m/%d/%y');
+
+Error Code: 1411. Incorrect datetime value: '10/30/22' for function str_to_date
 
