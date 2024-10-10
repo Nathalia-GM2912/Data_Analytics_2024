@@ -215,6 +215,12 @@ GROUP BY card_id;
 -- Chequeamos como ha quedado la tabla con los registros ingresados con el filtro efectuado con la tabla temporal.
 SELECT * FROM card_status;
 
+-- Creamos la relación FK
+
+-- Relación entre card_status y credit_cards
+ALTER TABLE card_status
+	ADD FOREIGN KEY (card_id) REFERENCES credit_cards(id);
+
 /* Ejercicio 2 ***********************
 Quantes targetes estan actives?*/
 
@@ -247,21 +253,7 @@ IGNORE 1 ROWS
 SET price = REPLACE(@price,'$','');  -- Se configura la columna 'price' para extraer el signo '$'
 
 -- Al analizar mejor los datos he decidido cambiar también el dato de fecha de la tabla credit_cards.
-
-SET SQL_SAFE_UPDATES = 0;
-
-UPDATE credit_cards
-SET expiring_date = STR_TO_DATE(@expiring_date, '%d,%m,%y');
-
-SET SQL_SAFE_UPDATES = 1;
-
-UPDATE credit_cards
-SET expiring_date = STR_TO_DATE(expiring_date, '%m/%d/%Y');
-
-Error Code: 1175. You are using safe update mode and you tried to update a table without a WHERE that uses a KEY column.  To disable safe mode, toggle the option in Preferences -> SQL Editor and reconnect.
-Error Code: 1411. Incorrect datetime value: '10/30/22' for function str_to_date
-275 row(s) affected Rows matched: 275  Changed: 275  Warnings: 0
-
+-- He creado una tabla temporal para coger de allí los datos que se habían borrado de la columna "expiring_dates"
 
 CREATE TEMPORARY TABLE temp_expiring_dates (
     id VARCHAR(20) PRIMARY KEY,
@@ -281,15 +273,12 @@ ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
 IGNORE 1 ROWS;
 
-drop table temp_expiring_dates;
-
-UPDATE credit_cards c
-JOIN temp_expiring_dates t ON c.id = t.id
-SET c.expiring_date = STR_TO_DATE(t.expiring_date, '%d/%m/%Y');
-
 UPDATE credit_cards c
 JOIN temp_expiring_dates t ON c.id = t.id
 SET c.expiring_date = STR_TO_DATE(t.expiring_date, '%m/%d/%y');
 
-Error Code: 1411. Incorrect datetime value: '10/30/22' for function str_to_date
+drop table temp_expiring_dates;
+
+
+    
 
