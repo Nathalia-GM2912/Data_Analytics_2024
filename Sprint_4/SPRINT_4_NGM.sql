@@ -304,14 +304,12 @@ JOIN
     
 SELECT * FROM sprint4.transaction_products;
 
+/* Ejercicio 1 ***********************
+Necessitem conèixer el nombre de vegades que s'ha venut cada producte.*/
+
 SELECT p.product_name, COUNT(tp.product_id) AS times_sold
 FROM products p
 JOIN transaction_products tp ON p.id = tp.product_id
 GROUP BY p.product_name
 ORDER BY times_sold DESC;
-
-/* Ejercicio 1 ***********************
-Necessitem conèixer el nombre de vegades que s'ha venut cada producte.*/
-
-
 
