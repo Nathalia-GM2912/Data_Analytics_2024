@@ -150,11 +150,6 @@ ALTER TABLE transactions
 	ADD CONSTRAINT fk_user
 	FOREIGN KEY (user_id) REFERENCES users(id);
 
--- Relación entre transactions y products ==> Este lo dejo para depués.
-/*ALTER TABLE transactions
-	ADD CONSTRAINT fk_product
-	FOREIGN KEY (products_ids) REFERENCES products(id);*/
-
 /* Ejercicio 1 ***********************
 Realitza una subconsulta que mostri tots els usuaris amb més de 30 transaccions utilitzant almenys 2 taules.*/
 
@@ -277,8 +272,46 @@ UPDATE credit_cards c
 JOIN temp_expiring_dates t ON c.id = t.id
 SET c.expiring_date = STR_TO_DATE(t.expiring_date, '%m/%d/%y');
 
+-- Se elimina la tabla temporal
 drop table temp_expiring_dates;
 
+-- Crear tabla intermedia
+    CREATE TABLE transaction_products (
+    id MEDIUMINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    transaction_id VARCHAR (255),
+    product_id VARCHAR (20),
+    FOREIGN KEY (transaction_id) REFERENCES transactions(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+    );
 
+-- Para crear la relación entre transactions y products (con índice)
+CREATE INDEX idx_trans_prod ON transactions(product_ids);
+
+-- Creamos los datos de la nueva tabla intermedia
+INSERT INTO transaction_products (transaction_id, product_id)
+SELECT 
+    t.id, 
+    CAST(jt.product_id AS UNSIGNED) AS Product_id
+FROM 
+    transactions t
+JOIN 
+    JSON_TABLE(
+        CONCAT('["', REPLACE(t.product_ids, ',', '","'), '"]'),
+        '$[*]' COLUMNS (
+            product_id VARCHAR(255) PATH '$'
+        )
+    ) AS jt;
     
+SELECT * FROM sprint4.transaction_products;
+
+SELECT p.product_name, COUNT(tp.product_id) AS times_sold
+FROM products p
+JOIN transaction_products tp ON p.id = tp.product_id
+GROUP BY p.product_name
+ORDER BY times_sold DESC;
+
+/* Ejercicio 1 ***********************
+Necessitem conèixer el nombre de vegades que s'ha venut cada producte.*/
+
+
 
